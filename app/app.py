@@ -41,7 +41,7 @@ def health():
             password=os.getenv("DB_PASSWORD"),
             connect_timeout=1
         )
-        
+
         cur = conn.cursor()
         cur.execute("SELECT 1;")
         cur.close()
@@ -54,6 +54,7 @@ def health():
             "status": "error",
             "reason": str(e)
         }), 500
+
 
 
 @app.route("/")
