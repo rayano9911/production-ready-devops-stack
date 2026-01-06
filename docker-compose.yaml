@@ -1,0 +1,79 @@
+version: "3.9"
+
+services:
+  app:
+    build:  
+      context: .
+      dockerfile: docker/Dockerfile  
+    container_name: devops-portfolio-app
+    command: gunicorn -w 4 -b 0.0.0.0:5000 app:app
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_HOST: ${REDIS_HOST}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - devops-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 10s
+      retries: 3
+      timeout: 5s
+
+  db:
+    image: postgres:15
+    container_name: devops-portfolio-db
+    environment:
+      POSTGRES_DB: devopsdb
+      POSTGRES_USER: devopsuser
+      POSTGRES_PASSWORD: devopspass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - devops-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U devopsuser -d devopsdb"]
+      interval: 10s
+      retries: 5
+      timeout: 5s
+
+  redis:
+    image: redis:7
+    container_name: devops-portfolio-redis
+    networks:
+      - devops-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      retries: 3
+      timeout: 5s
+
+  nginx:
+    image: nginx:latest
+    container_name: devops-portfolio-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./docker/nginx.config:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - app
+    networks:
+      - devops-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost"]
+      interval: 10s
+      retries: 3
+      timeout: 5s
+
+networks:
+  devops-net:
+
+volumes:
+  postgres_data:
+
